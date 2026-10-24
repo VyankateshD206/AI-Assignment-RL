@@ -20,6 +20,9 @@ def discretize(o, use_timetable=True):
 
 class QLearning:
     def __init__(self, seed=0, learning_rate=0.15, gamma=0.99, use_timetable=True):
+        # These bounds keep the tabular update a weighted average of valid targets.
+        if not 0 < learning_rate <= 1 or not 0 <= gamma <= 1:
+            raise ValueError("learning_rate must be in (0, 1] and gamma in [0, 1]")
         self.rng = np.random.default_rng(seed)
         self.learning_rate, self.gamma = learning_rate, gamma
         self.use_timetable = use_timetable

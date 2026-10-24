@@ -11,6 +11,14 @@ def network():
 class DQN:
     def __init__(self, seed=0, learning_rate=0.001, gamma=0.99, batch_size=64,
                  replay_capacity=50000, warmup=500, target_interval=250, use_timetable=True):
+        # Reject settings that prevent learning or cause invalid replay sampling.
+        if not np.isfinite(learning_rate) or learning_rate <= 0 or not 0 <= gamma <= 1:
+            raise ValueError("learning_rate must be finite and positive; gamma must be in [0, 1]")
+        if any(isinstance(v, bool) or not isinstance(v, (int, np.integer)) for v in
+               (batch_size, replay_capacity, warmup, target_interval)):
+            raise ValueError("Replay sizes, warmup, and target_interval must be integers")
+        if batch_size < 1 or warmup < 0 or replay_capacity < max(batch_size, warmup) or target_interval < 1:
+            raise ValueError("Replay capacity must cover batch_size and warmup; batch and target_interval must be positive")
         torch.manual_seed(seed)
         torch.set_num_threads(1)
         self.rng = np.random.default_rng(seed)
