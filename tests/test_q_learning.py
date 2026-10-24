@@ -1,4 +1,4 @@
-"""Check the Q-learning target against small hand-calculated examples."""
+"""Q-learning target checks."""
 import unittest
 
 import numpy as np

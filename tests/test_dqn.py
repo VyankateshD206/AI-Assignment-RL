@@ -1,4 +1,4 @@
-"""Small deterministic checks of DQN targets, without long training runs."""
+"""DQN target checks."""
 import unittest
 
 import numpy as np

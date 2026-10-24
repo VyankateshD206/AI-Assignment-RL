@@ -61,7 +61,7 @@ def train_main(argv=None):
     args = parser.parse_args(argv)
     if args.episodes < 1 or args.seed < 0:
         parser.error("episodes must be positive and seed nonnegative")
-    # Preserve the existing defaults while allowing small, recorded tuning runs.
+    # Q-learning and DQN use different default learning rates.
     learning_rate = args.learning_rate if args.learning_rate is not None else (0.001 if args.algo == "dqn" else 0.15)
     if not np.isfinite(learning_rate) or learning_rate <= 0 or (args.algo == "q_learning" and learning_rate > 1):
         parser.error("learning-rate must be finite and positive, and at most 1 for Q-learning")

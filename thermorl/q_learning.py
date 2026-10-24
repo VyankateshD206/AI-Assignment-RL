@@ -20,7 +20,7 @@ def discretize(o, use_timetable=True):
 
 class QLearning:
     def __init__(self, seed=0, learning_rate=0.15, gamma=0.99, use_timetable=True):
-        # These bounds keep the tabular update a weighted average of valid targets.
+        # Keep the tabular update a weighted average of the old value and target.
         if not 0 < learning_rate <= 1 or not 0 <= gamma <= 1:
             raise ValueError("learning_rate must be in (0, 1] and gamma in [0, 1]")
         self.rng = np.random.default_rng(seed)
@@ -30,7 +30,7 @@ class QLearning:
         self.visits = 0
 
     def act(self, observation, mask, epsilon=0.0):
-        # Fail clearly instead of selecting an action when the mask is unusable.
+        # At least one action must be allowed by the power cap.
         mask = np.asarray(mask, dtype=bool)
         if mask.shape != (16,) or not mask.any():
             raise ValueError("Action mask must contain 16 entries and a feasible action")
