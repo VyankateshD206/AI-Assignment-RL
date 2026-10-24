@@ -252,9 +252,9 @@ def make_handler(app):
                     scenario = query.get("scenario", ["restricted"])[0]
                     seed = int(query.get("seed", ["42"])[0])
                     self.send_json(200, app.simulate(controller, scenario, seed))
-                elif target.path in {"/", "/index.html", "/styles.css", "/app.js", "/favicon.svg"}:
+                elif target.path in {"/", "/index.html", "/styles.css", "/app.js", "/favicon.svg", "/UbuntuSans.ttf", "/UbuntuSansMono.ttf", "/FONT-LICENSE.txt"}:
                     name = "index.html" if target.path == "/" else target.path[1:]
-                    mime = {".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml"}[Path(name).suffix]
+                    mime = {".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml", ".ttf": "font/ttf", ".txt": "text/plain"}[Path(name).suffix]
                     self.send_bytes(200, (WEB_ROOT / name).read_bytes(), f"{mime}; charset=utf-8")
                 else:
                     self.send_json(404, {"error": "Not found"})
