@@ -1,0 +1,4 @@
+# Dependencies for the environment, Q-learning, evaluation, and plots.
+numpy>=1.26,<3
+gymnasium>=1.0,<2
+matplotlib>=3.8,<4

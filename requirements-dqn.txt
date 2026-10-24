@@ -1,0 +1,3 @@
+# DQN additionally needs PyTorch; Q-learning does not import it.
+-r requirements.txt
+torch>=2.2,<3

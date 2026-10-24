@@ -1,0 +1,6 @@
+# Keep local environments and generated experiment results out of commits.
+__pycache__/
+*.py[cod]
+.venv/
+outputs/
+.pytest_cache/
