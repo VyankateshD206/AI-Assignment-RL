@@ -40,10 +40,16 @@ class QLearning:
         return int(self.rng.choice(best)) if epsilon > 0 else int(best[0])
 
     def learn(self, observation, action, reward, next_observation, done, next_mask):
+        target = reward
+        if not done:
+            # Convert 0/1 flags before NumPy indexing; terminal days do not bootstrap.
+            next_mask = np.asarray(next_mask, dtype=bool)
+            if next_mask.shape != (16,) or not next_mask.any():
+                raise ValueError("Next mask must contain 16 entries and a feasible action")
+            future = self.table.get(discretize(next_observation, self.use_timetable), np.zeros(16))
+            target += self.gamma * float(np.max(future[next_mask]))
         key = discretize(observation, self.use_timetable)
         values = self.table.setdefault(key, np.zeros(16, dtype=np.float64))
-        future = self.table.get(discretize(next_observation, self.use_timetable), np.zeros(16))
-        target = reward + (0 if done else self.gamma * float(np.max(future[next_mask])))
         error = target - values[action]
         values[action] += self.learning_rate * error
         self.visits += 1
