@@ -47,6 +47,9 @@ class DQN:
         return int(np.argmax(np.where(mask, values, -np.inf)))
 
     def learn(self, observation, action, reward, next_observation, done, next_mask):
+        next_mask = np.asarray(next_mask, dtype=bool)
+        if next_mask.shape != (16,) or (not done and not next_mask.any()):
+            raise ValueError("Next mask needs 16 entries and a feasible action unless done")
         i = self.position
         self.states[i], self.next_states[i] = self.features(observation), self.features(next_observation)
         self.actions[i], self.rewards[i], self.dones[i], self.masks[i] = action, reward, done, next_mask
@@ -59,7 +62,10 @@ class DQN:
         values = self.online(states).gather(1, actions[:, None]).squeeze(1)
         with torch.no_grad():
             future = self.target(next_states).masked_fill(~torch.from_numpy(self.masks[batch]), -torch.inf).max(1).values
-            targets = torch.from_numpy(self.rewards[batch]) + self.gamma * (1 - torch.from_numpy(self.dones[batch])) * future
+            # Ended days have no future value. Set it to zero before arithmetic:
+            # multiplying an empty-mask maximum (-inf) by zero would produce NaN.
+            future = future.masked_fill(torch.from_numpy(self.dones[batch]).bool(), 0.0)
+            targets = torch.from_numpy(self.rewards[batch]) + self.gamma * future
         loss = nn.functional.smooth_l1_loss(values, targets)
         self.optimizer.zero_grad()
         loss.backward()
