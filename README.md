@@ -30,3 +30,8 @@ python -m thermorl evaluate --models outputs/q_demo --days 2 --output outputs/ev
 Use a fresh output folder for each run. Ten episodes are a quick check, not
 evidence of a well-trained policy. For command options, run
 `python -m thermorl train --help` or `python -m thermorl evaluate --help`.
+
+For a controlled tuning run, add `--learning-rate 0.1 --gamma 0.95` and use a new
+output folder. Learning rate controls update size; gamma controls how much future
+rewards matter. The chosen values are saved in `metadata.json`. Defaults are
+unchanged: Q-learning uses 0.15, DQN uses 0.001, and both use gamma 0.99.

@@ -51,6 +51,9 @@ def train_main(argv=None):
     parser.add_argument("--algo", choices=["q_learning", "dqn"], required=True)
     parser.add_argument("--episodes", type=int, default=300)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--learning-rate", type=float,
+                        help="Update size; defaults to 0.15 for Q-learning or 0.001 for DQN")
+    parser.add_argument("--gamma", type=float, default=0.99, help="Future reward discount in [0, 1]")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--config", type=Path)
     parser.add_argument("--no-timetable", action="store_true")
@@ -58,6 +61,12 @@ def train_main(argv=None):
     args = parser.parse_args(argv)
     if args.episodes < 1 or args.seed < 0:
         parser.error("episodes must be positive and seed nonnegative")
+    # Preserve the existing defaults while allowing small, recorded tuning runs.
+    learning_rate = args.learning_rate if args.learning_rate is not None else (0.001 if args.algo == "dqn" else 0.15)
+    if not np.isfinite(learning_rate) or learning_rate <= 0 or (args.algo == "q_learning" and learning_rate > 1):
+        parser.error("learning-rate must be finite and positive, and at most 1 for Q-learning")
+    if not 0 <= args.gamma <= 1:
+        parser.error("gamma must be in [0, 1]")
     if args.output.exists() and any(args.output.iterdir()):
         parser.error("output directory must be empty; use a new run name")
     plotting()  # Fail before training if the plotting installation is broken.
@@ -67,9 +76,11 @@ def train_main(argv=None):
         config = replace(config, fairness_weight=0)
     if args.algo == "dqn":
         from .dqn import DQN
-        agent, checkpoint = DQN(seed=args.seed, use_timetable=not args.no_timetable), "agent.pt"
+        agent, checkpoint = DQN(seed=args.seed, learning_rate=learning_rate, gamma=args.gamma,
+                                use_timetable=not args.no_timetable), "agent.pt"
     else:
-        agent, checkpoint = QLearning(seed=args.seed, use_timetable=not args.no_timetable), "agent.json"
+        agent, checkpoint = QLearning(seed=args.seed, learning_rate=learning_rate, gamma=args.gamma,
+                                      use_timetable=not args.no_timetable), "agent.json"
     config.save(args.output / "config.json")
     versions = {name: importlib.metadata.version(name) for name in ["numpy", "gymnasium", "matplotlib"]}
     if args.algo == "dqn":
