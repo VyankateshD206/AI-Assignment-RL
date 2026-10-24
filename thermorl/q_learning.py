@@ -27,6 +27,10 @@ class QLearning:
         self.visits = 0
 
     def act(self, observation, mask, epsilon=0.0):
+        # Fail clearly instead of selecting an action when the mask is unusable.
+        mask = np.asarray(mask, dtype=bool)
+        if mask.shape != (16,) or not mask.any():
+            raise ValueError("Action mask must contain 16 entries and a feasible action")
         valid = np.flatnonzero(mask)
         if epsilon > 0 and self.rng.random() < epsilon:
             return int(self.rng.choice(valid))
