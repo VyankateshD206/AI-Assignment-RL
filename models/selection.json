@@ -1,0 +1,14 @@
+{
+  "dqn": {
+    "source_run": "outputs/dqn_comfort_seed2",
+    "seed": 2,
+    "episode": 350,
+    "validation_return": -24.798917880710448
+  },
+  "q_learning": {
+    "source_run": "outputs/q_compact_seed0",
+    "seed": 0,
+    "episode": 1350,
+    "validation_return": -79.66917490981209
+  }
+}
