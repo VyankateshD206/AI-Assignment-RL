@@ -5,3 +5,6 @@ __pycache__/
 outputs/
 *.pdf
 *.py[cod]
+docs/
+models/archive/
+models/candidates/
