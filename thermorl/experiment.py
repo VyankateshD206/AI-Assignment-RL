@@ -355,6 +355,9 @@ def evaluate_main(argv=None):
         if {k: v for k, v in asdict(saved).items() if not k.endswith("weight")} != physical_config:
             parser.error("All models must use the same physical environment configuration")
         metadata = json.loads((folder / "metadata.json").read_text())
+        # Unknown algorithms must not fall through to the Q-learning loader.
+        if metadata.get("algorithm") not in ("q_learning", "dqn"):
+            parser.error("Unsupported model algorithm; expected q_learning or dqn")
         if metadata["algorithm"] == "dqn":
             from .dqn import DQN
             agent = DQN.load(folder / metadata["checkpoint"])
