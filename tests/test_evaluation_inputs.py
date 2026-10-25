@@ -44,3 +44,20 @@ def test_checkpoint_outside_model_directory_is_rejected(tmp_path, absolute, caps
     assert "Checkpoint must be inside" in capsys.readouterr().err
     load.assert_not_called()
     assert not output.exists()
+
+
+@pytest.mark.parametrize("split,seed,days", [
+    ("validation", 999_999, 1), ("validation", 2_000_000, 1),
+    ("validation", 1_999_999, 2), ("test", 1_999_999, 1),
+    ("test", 2**32, 1), ("test", 2**32 - 1, 2),
+])
+def test_evaluation_seeds_stay_in_the_selected_partition(tmp_path, split, seed, days, capsys):
+    output = tmp_path / "evaluation"
+    with patch("thermorl.experiment.plotting") as plotting:
+        with pytest.raises(SystemExit) as error:
+            evaluate_main(["--split", split, "--seed-offset", str(seed),
+                           "--days", str(days), "--output", str(output)])
+    assert error.value.code == 2
+    assert "selected validation/test partition" in capsys.readouterr().err
+    plotting.assert_not_called()
+    assert not output.exists()
