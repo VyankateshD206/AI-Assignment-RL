@@ -6,14 +6,16 @@ from thermorl.config import Config
 from thermorl.env import ACTIONS, ClassroomEnv
 from thermorl.experiment import rollout
 from thermorl.baselines import RuleController
+from thermorl.scenarios import SCENARIOS
 
 
 def test_gym_contract():
     check_env(ClassroomEnv(), skip_render_check=True)
 
 
-def test_seeded_days_and_transitions_reproduce():
-    a, b = ClassroomEnv(), ClassroomEnv()
+@pytest.mark.parametrize("scenario", SCENARIOS)
+def test_seeded_days_and_transitions_reproduce(scenario):
+    a, b = ClassroomEnv(scenario=scenario), ClassroomEnv(scenario=scenario)
     np.testing.assert_array_equal(a.reset(seed=42)[0], b.reset(seed=42)[0])
     for _ in range(a.horizon):
         action = int(np.flatnonzero(a.action_mask())[-1])
