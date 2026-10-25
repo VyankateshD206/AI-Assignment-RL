@@ -358,11 +358,15 @@ def evaluate_main(argv=None):
         # Unknown algorithms must not fall through to the Q-learning loader.
         if metadata.get("algorithm") not in ("q_learning", "dqn"):
             parser.error("Unsupported model algorithm; expected q_learning or dqn")
+        # Use the same model-directory boundary as the GUI loader.
+        checkpoint = (folder / metadata["checkpoint"]).resolve()
+        if not checkpoint.is_relative_to(folder.resolve()):
+            parser.error("Checkpoint must be inside its model directory")
         if metadata["algorithm"] == "dqn":
             from .dqn import DQN
-            agent = DQN.load(folder / metadata["checkpoint"])
+            agent = DQN.load(checkpoint)
         else:
-            agent = QLearning.load(folder / metadata["checkpoint"])
+            agent = QLearning.load(checkpoint)
         controllers[folder.name] = agent
         model_metadata[folder.name] = metadata
     args.output.mkdir(parents=True, exist_ok=True)
