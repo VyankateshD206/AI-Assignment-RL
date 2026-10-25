@@ -1,5 +1,16 @@
 # Changelog
 
+## October 25, 2026
+
+- Reject missing or unsupported algorithm names during evaluation.
+- Keep evaluation checkpoints inside their model directory, matching the GUI.
+- Check seeded transitions across all five scenarios and evaluation seed boundaries.
+- Update CLI defaults and explain selected versus final checkpoints in the README.
+
+Checks: 112 tests passed. The bundled agents and three baselines completed
+25 controller-day evaluations across five scenarios at validation seed 1,999,999,
+with finite recorded metrics and no power-cap violations.
+
 ## October 24, 2026
 
 - Added dependency lists and setup commands. PyTorch is optional for Q-learning.

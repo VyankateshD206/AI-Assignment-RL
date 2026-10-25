@@ -95,6 +95,10 @@ run metadata and dependency versions, per-episode CSV metrics, and a training pl
 Use a fresh output directory for each run. Checkpoints support evaluation; optimizer,
 replay-buffer, and random-generator states for resuming training are not saved.
 
+`agent.json` or `agent.pt` stores the selected validation checkpoint; `last_agent.*`
+stores the final episode's weights. The default selection uses mean validation
+return. `metadata.json` records the selected episode and training parameters.
+
 After selecting hyperparameters using **validation** days, freeze the setup and run:
 
 ```bash
@@ -111,17 +115,20 @@ be evaluated without models:
 python evaluate.py --scenarios restricted --days 5 --output outputs/baselines
 ```
 
-300 episodes is a starting budget, not a convergence guarantee. Inspect validation
+The examples use 300 episodes. Without `--episodes`, the CLI uses 1,500 for
+Q-learning and 400 for DQN. Inspect validation
 performance before choosing larger budgets or changing reward weights. Exploratory
 training returns are not directly comparable to greedy held-out evaluation returns.
 
 ## Original algorithms and baselines
 
-- **Q-learning:** sparse NumPy Q-table, epsilon-greedy exploration, coarse state
-  discretization, and feasible-action Bellman targets.
-- **DQN:** original PyTorch 17–64–64–16 MLP, replay buffer (50,000), target network
+- **Q-learning:** sparse NumPy Q-table, epsilon-greedy exploration, `compact_v1`
+  state bins by default, and feasible-action Bellman targets. `--q-state legacy`
+  selects the original discretization.
+- **DQN:** the CLI uses a PyTorch 21–64–64–16 MLP with `comfort_v1` features,
+  replay buffer (50,000), target network
   copied every 250 updates, batch size 64, 500-transition warmup, Huber loss,
-  gradient clipping, Adam learning rate 0.001, and discount 0.99.
+  gradient clipping, Adam learning rate 0.0003, and discount 0.99.
 - Q-learning uses learning rate 0.15 and discount 0.99. Both agents decay epsilon
   linearly from 1.0 to 0.05 over the first 80% of training episodes.
 - **Thermostat:** occupancy-aware hysteresis; power conflicts favor current
@@ -129,6 +136,9 @@ training returns are not directly comparable to greedy held-out evaluation retur
 - **Timetable:** thermostat with a fixed 30-minute pre-cooling window.
 - **Rotation:** occupied rooms alternate priority every 15 minutes when power
   is limited.
+
+`--dqn-features legacy` uses the original 17 inputs. DQN training rewards are
+divided by `--reward-scale` (default 10); reported physical returns are unscaled.
 
 All controllers receive the same observations and must select feasible joint actions.
 The baselines are comparators; the project's learned solutions are Q-learning and DQN.
