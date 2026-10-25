@@ -28,6 +28,10 @@ def test_gui_rollout_matches_reference_environment(controller):
         assert frame["interval_start_minute"] == record["minute"]
         np.testing.assert_array_equal(frame["temperature"], record["temperature"])
         np.testing.assert_array_equal(frame["occupancy"], record["occupancy"])
+        np.testing.assert_array_equal(frame["class_start"], record["class_start"])
+        np.testing.assert_array_equal(frame["temperature_before"], record["temperature_before"])
+        np.testing.assert_array_equal(frame["arrival_comfort_proxy"], record["arrival_comfort_proxy"])
+        np.testing.assert_array_equal(frame["arrival_violation"], record["arrival_violation"])
         np.testing.assert_array_equal(frame["equipment"], ACTIONS[record["action"]])
         assert frame["power_kw"] <= frame["cap_kw"] + 1e-9
         assert frame["reward"] == pytest.approx(-sum(frame["reward_terms"].values()))
@@ -49,6 +53,22 @@ def test_initial_comfort_is_not_misleading_and_seed_reproducible():
     assert first["frames"][0]["comfort_pct"] is None
     assert len(first["timetable"]) == 2
     assert all(len(classes) == 4 for classes in first["timetable"])
+
+
+def test_gui_no_classes_exposes_null_arrival_and_zero_time_denominators(monkeypatch):
+    import thermorl.env as env_module
+    original = env_module.make_day
+    def empty_day(*args):
+        day = original(*args)
+        day.occupancy[:] = 0
+        day.class_start[:] = False
+        return day
+    monkeypatch.setattr(env_module, 'make_day', empty_day)
+    header, body = request(SimulationApp(), '/api/simulate?controller=timetable')
+    assert '200 OK' in header
+    m = json.loads(body)['metrics']
+    assert m['arrival_discomfort_pct'] is None
+    assert m['occupied_room_minutes'] == m['early_class_occupied_minutes'] == m['class_arrivals'] == 0
 
 
 @pytest.mark.parametrize("seed", [-1, 2**32, 0.5, True])
@@ -102,6 +122,13 @@ def test_http_routes_json_validation_and_static_assets():
     header, body = request(app, "/api/simulate?scenario=restricted&seed=42")
     assert "200 OK" in header
     assert len(json.loads(body)["frames"]) == 289
+    data = json.loads(body)
+    metrics, records = rollout(ClassroomEnv(), RuleController('timetable'), 42)
+    assert data['metric_definitions']['version'] == 'comfort_v2'
+    assert data['metrics']['arrival_discomfort_pct'] == metrics['arrival_discomfort_pct']
+    assert data['metrics']['early_class_occupied_minutes'] == metrics['early_class_occupied_minutes']
+    start = next(i for i, r in enumerate(records) if r['class_start'].any())
+    assert data['frames'][start + 1]['arrival_comfort_proxy'] == records[start]['arrival_comfort_proxy'].tolist()
     header, body = request(app, "/api/simulate?seed=-1")
     assert "400 Bad Request" in header
     assert "Seed" in json.loads(body)["error"]

@@ -92,3 +92,33 @@ def test_bad_config_rejected():
         replace(Config(), step_minutes=7)
     with pytest.raises(ValueError):
         replace(Config(), thermal_capacity_kwh_per_c=(0, 1))
+@pytest.mark.parametrize('temperature,previous_fan,action,expected', [
+    (26.1, 0, 8, 0.1), (27., 0, 4, 1.), (27., 1, 0, 0.),
+    (23., 0, 0, 0.), (26., 0, 0, 0.), (22., 0, 0, 1.),
+])
+def test_arrival_snapshot_precedes_action_and_uses_previous_fan(temperature, previous_fan, action, expected):
+    env = ClassroomEnv(scenario='normal')
+    env.reset(seed=42, options={'temperature': [temperature, 24.]})
+    env.day.occupancy[0] = [20, 0]
+    env.day.class_start[0] = [True, False]
+    env.previous_fan[0] = previous_fan
+    _, _, _, _, info = env.step(action)
+    assert info['temperature_before'][0] == temperature
+    assert info['arrival_comfort_proxy'][0] == temperature - previous_fan * env.config.fan_comfort_offset_c
+    assert info['arrival_violation'][0] == pytest.approx(expected)
+    if action == 8:
+        assert info['violation'][0] == 0  # Comfortable after AC, uncomfortable on entry.
+    env.reset(seed=42)
+    np.testing.assert_array_equal(env.previous_fan, [0, 0])
+
+
+def test_previous_fan_bookkeeping_does_not_affect_physics_reward_or_observation():
+    a, b = ClassroomEnv(), ClassroomEnv()
+    a.reset(seed=42)
+    b.reset(seed=42)
+    b.previous_fan = np.ones(2, dtype=int)
+    ao, ar, _, _, ai = a.step(0)
+    bo, br, _, _, bi = b.step(0)
+    np.testing.assert_array_equal(ao, bo)
+    np.testing.assert_array_equal(ai['temperature'], bi['temperature'])
+    assert ar == br and ai['energy_kwh'] == bi['energy_kwh']

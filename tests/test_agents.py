@@ -37,7 +37,8 @@ def test_timetable_ablation_does_not_use_future_class_inputs():
 def test_dqn_masked_bellman_target_terminal_and_roundtrip(tmp_path):
     torch = pytest.importorskip("torch")
     from thermorl.dqn import DQN
-    agent = DQN(batch_size=1, warmup=1, learning_rate=0.0, gamma=0.5)
+    agent = DQN(batch_size=1, warmup=1, learning_rate=0.001, gamma=0.5)
+    agent.optimizer.param_groups[0]["lr"] = 0.0
     for parameter in agent.online.parameters():
         parameter.data.zero_()
     for parameter in agent.target.parameters():
@@ -50,7 +51,8 @@ def test_dqn_masked_bellman_target_terminal_and_roundtrip(tmp_path):
     # Feasible next Q=2, reward=-1 => zero Bellman residual.
     assert agent.learn(obs, 0, -1, obs, False, mask) == pytest.approx(0)
     assert agent.act(obs, mask) == 0
-    terminal = DQN(batch_size=1, warmup=1, replay_capacity=1, learning_rate=0.0)
+    terminal = DQN(batch_size=1, warmup=1, replay_capacity=1, learning_rate=0.001)
+    terminal.optimizer.param_groups[0]["lr"] = 0.0
     for parameter in terminal.online.parameters():
         parameter.data.zero_()
     assert terminal.learn(obs, 0, -2, obs, True, mask) == pytest.approx(1.5)
