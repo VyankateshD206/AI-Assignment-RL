@@ -18,8 +18,8 @@ import numpy as np
 from .baselines import RuleController
 from .config import Config
 from .env import ACTIONS, ClassroomEnv
-from .metrics import summarize
-from .q_learning import QLearning, discretize
+from .metrics import METRIC_DEFINITIONS, summarize
+from .q_learning import QLearning
 from .scenarios import SCENARIOS
 
 WEB_ROOT = Path(__file__).with_name("web")
@@ -44,15 +44,27 @@ def physical_config(config):
 class SimulationApp:
     """Read-only model registry and bounded cache of reproducible full-day rollouts."""
 
-    def __init__(self, config=None, model_paths=()):
+    def __init__(self, config=None, model_paths=(), study_path=None):
         self.config = config or Config()
         self.controllers = {key: RuleController(key) for key in BASELINES}
         self.model_details = []
         self.warnings = []
+        self.study = None
+        if study_path:
+            try:
+                summary = json.loads(Path(study_path).read_text())
+                if (summary['total_days'] != summary['scenario_count'] * summary['days_per_scenario'] or
+                        summary['partition'] not in ('tuning', 'confirmation', 'final')):
+                    raise ValueError('invalid study dimensions or partition')
+                self.study = summary
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                self.warnings.append(f'Could not load saved study summary: {error}')
         for folder in model_paths:
             folder = Path(folder).resolve()
             try:
                 metadata = json.loads((folder / "metadata.json").read_text())
+                if not metadata.get("training_complete", True):
+                    raise ValueError("training is still in progress")
                 model_config = Config.load(folder / "config.json")
                 if physical_config(model_config) != physical_config(self.config):
                     raise ValueError("physical environment configuration differs from the GUI configuration")
@@ -76,6 +88,17 @@ class SimulationApp:
                     "description": "Frozen learned policy; greedy evaluation, no training during playback.",
                     "algorithm": algorithm, "episodes": metadata.get("episodes"),
                     "training_seed": metadata.get("seed"), "run": folder.name,
+                    "selected_episode": metadata.get("selected_episode", metadata.get("episodes")),
+                    "selection": metadata.get("selection", "Final checkpoint; no periodic validation"),
+                    "selection_mode": metadata.get('selection_mode', 'return'),
+                    "comfort_floor": metadata.get('comfort_floor'),
+                    "selection_comfort_floor_met": metadata.get('selection_comfort_floor_met'),
+                    "initialization": metadata.get('initialization'),
+                    "feature_mode": getattr(controller, "feature_mode", getattr(controller, "state_mode", "legacy")),
+                    "network_inputs": getattr(controller, "input_size", None),
+                    "reward_scale": getattr(controller, "reward_scale", 1.0),
+                    "validation_history": self.read_validation(folder / "validation.csv"),
+                    "selected_validation": metadata.get("selected_validation", {}),
                     "use_timetable": metadata.get("use_timetable", True),
                     "hyperparameters": metadata.get("agent_hyperparameters", {
                         "learning_rate": controller.learning_rate, "gamma": controller.gamma}),
@@ -101,14 +124,27 @@ class SimulationApp:
         except (OSError, ValueError, KeyError, TypeError):
             return []
 
+    @staticmethod
+    def read_validation(path):
+        fields = ("episode", "mean_return", "mean_energy_kwh", "mean_comfort_pct",
+                  "mean_overheating_pct", "mean_overcooling_pct")
+        try:
+            with path.open() as stream:
+                rows = [{key: float(row[key]) for key in fields} for row in csv.DictReader(stream)]
+            return rows if all(np.isfinite(list(row.values())).all() for row in rows) else []
+        except (OSError, ValueError, KeyError, TypeError):
+            return []
+
     def catalog(self):
         return {
-            "controllers": [{"id": key, "label": label, "description": description, "kind": "baseline"}
+            "controllers": [{"id": key, "label": label, "description": description,
+                             "kind": "baseline", "role": "comparison_only"}
                             for key, (label, description) in BASELINES.items()] + self.model_details,
             "scenarios": [{"id": key, "label": SCENARIO_DETAILS[key][0],
                            "description": SCENARIO_DETAILS[key][1]} for key in SCENARIOS],
             "config": asdict(self.config), "warnings": self.warnings,
             "simulation_only": True,
+            "study": self.study,
         }
 
     @lru_cache(maxsize=32)
@@ -131,6 +167,8 @@ class SimulationApp:
             "occupancy": env.day.occupancy[0].tolist(), "power_kw": 0.0,
             "cap_kw": float(env.day.cap[0]), "equipment": [[0, 0], [0, 0]],
             "action": None, "reward": 0.0, "return": 0.0, "energy_kwh": 0.0,
+            "class_start": [False, False],
+            "arrival_comfort_proxy": [None, None], "arrival_violation": [None, None],
             "room_energy_kwh": [0.0, 0.0], "comfort_pct": None,
             "worst_room_discomfort_c": 0.0, "ac_switches": 0, "cap_violations": 0,
             "next_class_minutes": next_minutes.tolist(), "next_class_occupancy": next_counts.tolist(),
@@ -154,7 +192,7 @@ class SimulationApp:
             q_values = None
             state_seen = None
             if isinstance(controller, QLearning):
-                key = discretize(observation, controller.use_timetable)
+                key = controller.state_key(observation)
                 state_seen = key in controller.table
                 q_values = controller.table.get(key, np.zeros(16)).tolist()
             elif controller_id not in BASELINES:
@@ -179,6 +217,9 @@ class SimulationApp:
             frames.append({
                 "minute": (t + 1) * c.step_minutes,
                 "temperature_before": before.tolist(),
+                "class_start": info["class_start"].tolist(),
+                "arrival_comfort_proxy": info["arrival_comfort_proxy"].tolist(),
+                "arrival_violation": info["arrival_violation"].tolist(),
                 "observation": input_observation.tolist(),
                 "action_mask": mask.tolist(), "q_values": q_values, "state_seen": state_seen,
                 "heat_terms_kw": {
@@ -218,6 +259,7 @@ class SimulationApp:
         return {
             "controller": controller_id, "scenario": scenario, "seed": seed,
             "step_minutes": c.step_minutes, "frames": frames,
+            "metric_definitions": METRIC_DEFINITIONS,
             "metrics": summarize(records, c.step_minutes) | {"return": total_return},
             "timetable": timetable,
         }
@@ -270,12 +312,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Run the local Python-backed ThermoRL simulation GUI")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--config", type=Path)
+    parser.add_argument('--study', type=Path, help='Optional saved study summary JSON; separate from demo-day results')
     parser.add_argument("--models", nargs="*", type=Path, default=None,
-                        help="Model run directories; default: discover valid runs under outputs/")
+                        help="Model run directories; default: curated models/ bundles, falling back to outputs/")
     args = parser.parse_args(argv)
     if not 1 <= args.port <= 65535:
         parser.error("port must be between 1 and 65535")
-    models = args.models if args.models is not None else sorted(Path("outputs").glob("*/metadata.json"))
+    bundled = sorted(Path("models").glob("*/metadata.json"))
+    models = args.models if args.models is not None else (bundled or sorted(Path("outputs").glob("*/metadata.json")))
     if args.models is None:
         discovered = []
         for path in models:
@@ -286,7 +330,7 @@ def main(argv=None):
             except (OSError, ValueError, AttributeError):
                 print(f"Warning: skipping unreadable metadata in {path.parent.name}", flush=True)
         models = discovered
-    app = SimulationApp(Config.load(args.config), models)
+    app = SimulationApp(Config.load(args.config), models, study_path=args.study)
     for warning in app.warnings:
         print(f"Warning: {warning}", flush=True)
     try:

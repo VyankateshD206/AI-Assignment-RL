@@ -39,6 +39,7 @@ class ClassroomEnv(gym.Env):
                 raise ValueError("temperature must contain two finite values")
             self.temperature = supplied.copy()
         self.previous_ac = np.zeros(2, dtype=int)
+        self.previous_fan = np.zeros(2, dtype=int)
         return self._observation(), {"action_mask": self.action_mask()}
 
     def action_power(self):
@@ -86,6 +87,10 @@ class ClassroomEnv(gym.Env):
             raise ValueError("Action exceeds the current power cap")
         c = self.config
         dt = c.step_minutes / 60
+        temperature_before = self.temperature.copy()
+        arrival_proxy = temperature_before - self.previous_fan * c.fan_comfort_offset_c
+        arrival_violation = (np.maximum(c.comfort_low_c - arrival_proxy, 0) +
+                             np.maximum(arrival_proxy - c.comfort_high_c, 0))
         equipment = ACTIONS[action]
         ac, fan = equipment[:, 0], equipment[:, 1]
         occupants = self.day.occupancy[self.t].copy()
@@ -106,7 +111,10 @@ class ClassroomEnv(gym.Env):
         # Metrics use the occupants present during this transition, not next interval's class.
         info = {
             "minute": self.t * c.step_minutes, "temperature": self.temperature.copy(),
-            "effective_temperature": effective.copy(), "outdoor": float(self.day.outdoor[self.t]),
+            "temperature_before": temperature_before,
+            "arrival_comfort_proxy": arrival_proxy, "arrival_violation": arrival_violation,
+            "effective_temperature": effective.copy(),
+            "overheated": effective > c.comfort_high_c, "overcooled": effective < c.comfort_low_c, "outdoor": float(self.day.outdoor[self.t]),
             "occupancy": occupants, "class_start": self.day.class_start[self.t].copy(),
             "violation": violation, "energy_kwh": energy, "power_kw": float(self.action_power()[action]),
             "cap_kw": float(self.day.cap[self.t]), "switches": switches, "action": int(action),
@@ -116,6 +124,7 @@ class ClassroomEnv(gym.Env):
             "reward_switching": c.switching_weight * switches,
         }
         self.previous_ac = ac.copy()
+        self.previous_fan = fan.copy()
         self.t += 1
         # Day boundary is a finite task horizon, not a physical absorbing state.
         return self._observation(), float(reward), False, self.t == self.horizon, info | {"action_mask": self.action_mask()}

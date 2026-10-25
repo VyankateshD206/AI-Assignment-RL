@@ -1,0 +1,28 @@
+{
+  "step_minutes": 5,
+  "thermal_capacity_kwh_per_c": [
+    1.5,
+    1.8
+  ],
+  "conductance_kw_per_c": [
+    0.16,
+    0.14
+  ],
+  "solar_gain_kw_per_wm2": [
+    0.003,
+    0.0015
+  ],
+  "person_heat_kw": 0.075,
+  "ac_cooling_kw": 12.0,
+  "ac_electric_kw": 3.0,
+  "fan_electric_kw": 0.12,
+  "fan_comfort_offset_c": 1.5,
+  "comfort_low_c": 23.0,
+  "comfort_high_c": 26.0,
+  "normal_cap_kw": 6.5,
+  "restricted_cap_kw": 3.3,
+  "energy_weight": 0.3,
+  "discomfort_weight": 2.0,
+  "fairness_weight": 1.0,
+  "switching_weight": 0.02
+}

@@ -1,0 +1,67 @@
+{
+  "algorithm": "q_learning",
+  "seed": 0,
+  "episodes": 1500,
+  "training_scenarios": [
+    "normal",
+    "restricted",
+    "unequal",
+    "schedule_changes"
+  ],
+  "checkpoint": "agent.json",
+  "use_timetable": true,
+  "python": "3.12.4",
+  "versions": {
+    "numpy": "1.26.4",
+    "gymnasium": "1.4.0",
+    "matplotlib": "3.11.2"
+  },
+  "checkpoint_purpose": "greedy evaluation, not optimizer resumption",
+  "agent_hyperparameters": {
+    "learning_rate": 0.15,
+    "gamma": 0.99,
+    "state_mode": "compact_v1"
+  },
+  "epsilon": {
+    "start": 1.0,
+    "end": 0.05,
+    "decay_fraction": 0.8
+  },
+  "selection": "Highest mean original (unscaled) return on fixed validation days; earliest checkpoint wins ties",
+  "validation": {
+    "every": 50,
+    "days_per_scenario": 2,
+    "scenarios": [
+      "normal",
+      "restricted",
+      "unequal",
+      "schedule_changes"
+    ],
+    "seeds": [
+      1000000,
+      1000001
+    ]
+  },
+  "selected_episode": 1350,
+  "selected_validation": {
+    "mean_energy_kwh": 19.36875,
+    "mean_occupied_room_degree_hours": 11.618057203563502,
+    "mean_student_degree_hours": 399.87529204874795,
+    "mean_mean_student_discomfort_c": 1.0573379668742022,
+    "mean_comfort_violation_pct": 58.938707729468604,
+    "mean_comfort_pct": 41.0612922705314,
+    "mean_overheating_pct": 55.134359903381636,
+    "mean_overcooling_pct": 3.8043478260869565,
+    "mean_class_start_violation_pct": 68.52678571428572,
+    "mean_room_0_mean_discomfort_c": 1.2317195495523257,
+    "mean_room_1_mean_discomfort_c": 0.886518608811527,
+    "mean_worst_room_mean_discomfort_c": 1.3266462222054005,
+    "mean_room_discomfort_gap_c": 0.5350542860469484,
+    "mean_ac_switches": 58.25,
+    "mean_cap_violations": 0.0,
+    "mean_return": -79.66917490981209,
+    "unseen_state_pct": 0.26041666666666297
+  },
+  "source_run": "outputs/q_compact_seed0",
+  "bundle_selection": "Highest saved mean original validation return among three independent training seeds; no test metrics used"
+}

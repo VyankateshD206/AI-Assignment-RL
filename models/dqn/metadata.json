@@ -1,0 +1,74 @@
+{
+  "algorithm": "dqn",
+  "seed": 2,
+  "episodes": 400,
+  "training_scenarios": [
+    "normal",
+    "restricted",
+    "unequal",
+    "schedule_changes"
+  ],
+  "checkpoint": "agent.pt",
+  "use_timetable": true,
+  "python": "3.12.4",
+  "versions": {
+    "numpy": "1.26.4",
+    "gymnasium": "1.4.0",
+    "matplotlib": "3.11.2",
+    "torch": "2.14.1+cpu"
+  },
+  "checkpoint_purpose": "greedy evaluation, not optimizer resumption",
+  "agent_hyperparameters": {
+    "learning_rate": 0.0003,
+    "gamma": 0.99,
+    "batch_size": 64,
+    "warmup": 500,
+    "target_interval": 250,
+    "replay_capacity": 50000,
+    "feature_mode": "comfort_v1",
+    "network_inputs": 21,
+    "reward_scale": 10.0
+  },
+  "epsilon": {
+    "start": 1.0,
+    "end": 0.05,
+    "decay_fraction": 0.8
+  },
+  "selection": "Highest mean original (unscaled) return on fixed validation days; earliest checkpoint wins ties",
+  "validation": {
+    "every": 50,
+    "days_per_scenario": 2,
+    "scenarios": [
+      "normal",
+      "restricted",
+      "unequal",
+      "schedule_changes"
+    ],
+    "seeds": [
+      1000000,
+      1000001
+    ]
+  },
+  "selected_episode": 350,
+  "selected_validation": {
+    "mean_energy_kwh": 50.58500000000001,
+    "mean_occupied_room_degree_hours": 2.137644266975806,
+    "mean_student_degree_hours": 73.22485244208268,
+    "mean_mean_student_discomfort_c": 0.21284053458135557,
+    "mean_comfort_violation_pct": 24.406702898550726,
+    "mean_comfort_pct": 75.59329710144928,
+    "mean_overheating_pct": 9.310084541062801,
+    "mean_overcooling_pct": 15.096618357487923,
+    "mean_class_start_violation_pct": 20.788690476190474,
+    "mean_room_0_mean_discomfort_c": 0.1708377721508855,
+    "mean_room_1_mean_discomfort_c": 0.21849137775160057,
+    "mean_worst_room_mean_discomfort_c": 0.25697583821488906,
+    "mean_room_discomfort_gap_c": 0.124622526527292,
+    "mean_ac_switches": 170.0,
+    "mean_cap_violations": 0.0,
+    "mean_return": -24.798917880710448,
+    "unseen_state_pct": ""
+  },
+  "source_run": "outputs/dqn_comfort_seed2",
+  "bundle_selection": "Highest saved mean original validation return among three independent training seeds; no test metrics used"
+}
