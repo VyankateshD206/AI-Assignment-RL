@@ -133,6 +133,14 @@ The comfort proxy is air temperature minus a configured 1.5°C offset while a fa
 active; the comfort band is 23–26°C. This is a simulation assumption, not a calibrated
 physiological comfort model. The power cap is enforced through feasible-action masks.
 
+![Whole-day comfort versus daily electricity use for five cooling policies](report/figures/energy_comfort.png)
+
+Whole-day comfort and energy across the same 50 simulated days per policy. Higher
+comfort and lower electricity use are preferable. DQN achieves 75.03% comfort at
+50.50 kWh/day; Q-learning achieves 23.16% at 15.52 kWh/day. The timetable baseline
+achieves 92.86% at 24.59 kWh/day, showing the improvement still needed from the RL
+agents. Values pool occupied room-time across days.
+
 Thermostat, timetable and rotation are comparison baselines only. They never supply
 training labels or override learned actions. The solution methods are Q-learning and
 standard DQN, trained through interaction and temporal-difference updates.
